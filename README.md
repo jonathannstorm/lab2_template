@@ -76,7 +76,7 @@ You are expected to submit two Python files,
 
 The following UML diagram shows the classes that you are expected to implement in these files.
 
-![tram-uml](../images/tram-classes.png)
+![tram-uml](tram-classes.png)
 
 The underscored variables right after the class names are just a hint that need not be followed.
 In fact, the baseline (non-bonus) implementation of `Graph` does not need them at all.
