@@ -1,7 +1,117 @@
+import heapq
+
+class PriorityQueue:
+    def __init__(self):
+        self._priorityQueue = []        # kön implementeras som en array
+
+    def put(self, element, priority):
+        heapq.heappush(self._priorityQueue, (priority, element))    # element med minsta värde läggs till self._priorityQueue[0]
+
+    def get(self):
+        if not self.is_empty():
+            topPQElement = heapq.heappop(self._priorityQueue)       # self._priorityQueue[0] poppas
+            return topPQElement                                     # retur av element med högst prio
+        else:
+            return None
+        
+    def is_empty(self):
+        return len(self._priorityQueue) == 0
+    
+    def peek(self):
+        if not self.is_empty():
+            return self._priorityQueue[0][1]
+        else:
+            return None
+    def size(self):
+        return len(self._priorityQueue)
+    
+
+
+
 
 def main():
     wg = WeightedGraph()
-    wg.add_vertex(1)
+
+    wg.add_edge('a', 'b')
+    wg.add_edge('a', 'c')
+    wg.add_edge('c', 'd')
+    wg.add_edge('b', 'd')
+    wg.add_edge('c', 'f')
+    wg.add_edge('d', 'f')
+    wg.add_edge('d', 'e')
+    wg.add_edge('g', 'e')
+    wg.add_edge('g', 'f')
+    wg.add_edge('g', 'h')
+    
+    print(wg.edges())
+
+    wg.set_weight('a', 'b', 2)
+    wg.set_weight('a', 'c', 1)
+    wg.set_weight('c', 'd', 1)
+    wg.set_weight('b', 'd', 3)
+    wg.set_weight('c', 'f', 5)
+    wg.set_weight('d', 'f', 1)
+    wg.set_weight('d', 'e', 4)
+    wg.set_weight('g', 'e', 5)
+    wg.set_weight('g', 'f', 1)
+    wg.set_weight('g', 'h', 10)
+
+    for vertex in wg.vertices():
+        print(f'{vertex} :   {wg.neighbours(vertex)}')
+
+
+    dd, pv = dijkstra(wg, 'a')
+
+    print(dd.items())
+    print(pv.items())
+
+
+
+def dijkstra(graph, source):
+    # samlare av data
+    distanceDicionary = {}
+    previousVertex = {}
+    vistiedVertices = set()
+
+    # initiera prioritetskön med source så att while loopen kan börja
+    priorityQueue = PriorityQueue()
+    priorityQueue.put([source, None], 0)
+
+
+    # while kör tills prioritetskön är tom
+    while not priorityQueue.is_empty():
+        # element från prioritetskön på formen av en tuple (kostnadHit, [dennaNod, förranoden])
+        priorityQueueElement = priorityQueue.get()
+
+        # hämta ut varje parameter från tuplen (kostnadHit, [dennaNod, förranoden])
+        currentVertex = priorityQueueElement[1][0]
+        backPointer = priorityQueueElement[1][1]
+        cost = priorityQueueElement[0]
+
+        # om currentVertex inte finns i vistitedVertices betyder det att det är första gången vi kommit hit
+        # eftersom jag använder mig av en min-prioritetskö där prioriteten är kostaden till noden kan jag vara
+        # säker på att detta är den billigaste vägen
+        if currentVertex not in vistiedVertices:
+            vistiedVertices.add(currentVertex)          # så att vi inte besöker noden igen
+            distanceDicionary[currentVertex] = cost     # spara kostanden hit
+            previousVertex[currentVertex] = backPointer # spara vart noden kom ifrån
+            
+            # lägg till alla grannar till noden på agendan för prioritetskön
+            for neighbour in graph.neighbours(currentVertex):
+                edgeWeight = graph.get_weight(neighbour, currentVertex) # kostnad mellan nuvarande nod och granne
+                costToPreviousVertex = distanceDicionary[currentVertex] # kostnad från source till nuvarande nod
+                costToHere = edgeWeight + costToPreviousVertex          # kostnad från source till granne
+                
+                # prioritetskön uppdateras
+                priorityQueue.put([neighbour, currentVertex], costToHere)
+
+
+    return distanceDicionary, previousVertex
+
+                
+        
+
+    
 
 
 class Graph:
@@ -9,15 +119,20 @@ class Graph:
         self._adjacencyList = {}
         self._valuelist = valuesDictionary
         self._isdirected = directed
-        if valuesDictionary is None:
-            valuesDictionary = {}
-        if startVertex is not None:
+        if startVertex is None:
+            pass
+        else:
             self._adjacencyList[startVertex] = []
-        
+
+        if self._valuelist is None:
+            self._valuelist = {}
 
 
     def vertices(self):
-        return self._valuelist.keys()
+        vertices = []
+        for key in self._adjacencyList.keys():
+            vertices.append(key)
+        return vertices
     
 
     def edges(self):
@@ -36,16 +151,15 @@ class Graph:
 
     def add_edge(self,a,b):
         self.add_vertex(a)
-
+        self.add_vertex(b)
+        if a not in self._adjacencyList[b]:
+            self._adjacencyList[b].append(a)
         if b not in self._adjacencyList[a]:
             self._adjacencyList[a].append(b)
 
-        if b not in self._valuelist.keys():
-            self.set_vertex_value(b, None)
 
-
-    def add_vertex(self,a):
-        if a not in self._valuelist.keys():
+    def add_vertex(self,a): 
+        if a not in self._adjacencyList.keys():
             self._adjacencyList[a] = []
             self.set_vertex_value(a, None)
 
@@ -63,16 +177,36 @@ class Graph:
 
 
 class WeightedGraph(Graph):
-    def __init__(self, startVertex=None):
-        super().__init__(self, startVertex)
+    
+    def __init__(self):
+        super().__init__()
         self._weightDictionary = {}
+
+    def add_edge(self, a, b):
+        super().add_edge(a, b)
+        self.set_weight(a, b, 0)
 
 
     def set_weight(self, a, b, w):
-        pass
+        self.set_weight_key_checker(a, b)
+        if b in self._adjacencyList[a]:
+            self._weightDictionary[a] = {**self._weightDictionary[a], b: w}
+        if a in self._adjacencyList[b]:
+            self._weightDictionary[b] = {**self._weightDictionary[b], a: w}
+        else:
+            print(f'missing edge between {a} and {b}')
+
+    def set_weight_key_checker(self, a, b):
+        if a not in self._weightDictionary:
+            self._weightDictionary[a] = {}
+        if b not in self._weightDictionary:
+            self._weightDictionary[b] = {}
 
     def get_weight(self, a, b):
-        pass
+        return self._weightDictionary[a][b]
+    
+
+
 
 if __name__ == '__main__':
     main()
