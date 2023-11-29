@@ -1,4 +1,6 @@
 import heapq
+import graphviz
+
 
 class PriorityQueue:
     def __init__(self):
@@ -56,18 +58,16 @@ def main():
     wg.set_weight('g', 'f', 1)
     wg.set_weight('g', 'h', 10)
 
-    for vertex in wg.vertices():
-        print(f'{vertex} :   {wg.neighbours(vertex)}')
-
-
-    dd, pv = dijkstra(wg, 'a')
-
-    print(dd.items())
-    print(pv.items())
 
 
 
-def dijkstra(graph, source):
+
+
+    view_shortest(wg, 'a', 'h', lambda u, v : wg.get_weight(u,v))
+
+
+
+def dijkstra(graph, source, cost=lambda u,v: 1):
     # samlare av data
     distanceDicionary = {}
     previousVertex = {}
@@ -86,19 +86,19 @@ def dijkstra(graph, source):
         # hämta ut varje parameter från tuplen (kostnadHit, [dennaNod, förranoden])
         currentVertex = priorityQueueElement[1][0]
         backPointer = priorityQueueElement[1][1]
-        cost = priorityQueueElement[0]
+        costToThisNode = priorityQueueElement[0]
 
         # om currentVertex inte finns i vistitedVertices betyder det att det är första gången vi kommit hit
         # eftersom jag använder mig av en min-prioritetskö där prioriteten är kostaden till noden kan jag vara
         # säker på att detta är den billigaste vägen
         if currentVertex not in vistiedVertices:
             vistiedVertices.add(currentVertex)          # så att vi inte besöker noden igen
-            distanceDicionary[currentVertex] = cost     # spara kostanden hit
+            distanceDicionary[currentVertex] = costToThisNode     # spara kostanden hit
             previousVertex[currentVertex] = backPointer # spara vart noden kom ifrån
             
             # lägg till alla grannar till noden på agendan för prioritetskön
             for neighbour in graph.neighbours(currentVertex):
-                edgeWeight = graph.get_weight(neighbour, currentVertex) # kostnad mellan nuvarande nod och granne
+                edgeWeight = cost(str(neighbour), str(currentVertex)) # kostnad mellan nuvarande nod och granne
                 costToPreviousVertex = distanceDicionary[currentVertex] # kostnad från source till nuvarande nod
                 costToHere = edgeWeight + costToPreviousVertex          # kostnad från source till granne
                 
@@ -108,12 +108,20 @@ def dijkstra(graph, source):
 
     return distanceDicionary, previousVertex
 
-                
+
+
+def construct_path_from_previousVertex(prevVertexDict, source, target):
+    path = []
+    currentVertex = target
+    while currentVertex != source:
+        path.insert(0, currentVertex)
+        currentVertex = prevVertexDict[currentVertex]
+    path.insert(0, currentVertex)
+    return path
+
         
 
     
-
-
 class Graph:
     def __init__(self, startVertex=None, valuesDictionary = None, directed=False):
         self._adjacencyList = {}
@@ -205,6 +213,50 @@ class WeightedGraph(Graph):
     def get_weight(self, a, b):
         return self._weightDictionary[a][b]
     
+
+def visualize(graph, view='dot', name='mygraph', nodecolors=None):
+    dot = graphviz.Graph(name = name)
+
+    for vertex in graph.vertices():
+        if vertex not in nodecolors:
+            dot.node(
+                str(vertex),
+                fillcolor = 'white',
+                style = 'filled'
+            )
+        else:
+            dot.node(
+                str(vertex),
+                fillcolor = 'orange',
+                style = 'filled'
+            )
+
+    
+    for (v, w) in graph.edges():
+        dot.edge(str(v), str(w))
+
+    dot.render(view=True)
+
+    
+
+
+
+
+
+
+
+
+def view_shortest(G, source, target, cost = lambda u,v: 1):
+    distances, prevVertexes = dijkstra(G, source, cost)
+
+    path = construct_path_from_previousVertex(prevVertexes, source, target)
+    
+
+    print(path)
+    print('\n')
+    colormap = {str(v): 'orange' for v in path}
+    print(colormap)
+    visualize(G, view='view', nodecolors=colormap)
 
 
 
