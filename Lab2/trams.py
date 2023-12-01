@@ -13,31 +13,34 @@ TRAM_FILE = './tramnetwork.json'
 td.build_tram_network(TRAM_STOPS, TRAM_LINES)
 
 def main():
-    
-    tramGraph = g.WeightedGraph()
 
 
     with open(TRAM_FILE, 'r') as tramfile:
         tramNet = json.load(tramfile)
 
-        linesDictionary = tramNet['lines']
-        stopDictionary = tramNet['stops']
+        linesDict = tramNet['lines']
+        stopsDict = tramNet['stops']
+        timesDict = tramNet['times']
+
+        tramGraph = TramNetwork(stopsDict, linesDict, timesDict)
 
 
+        print(tramGraph.vertices())
 
 
-        for line in linesDictionary.keys():
-            for stopIndex in range(len(linesDictionary[line]) - 1):
-                currentStop = linesDictionary[line][stopIndex]
-                nextStop = linesDictionary[line][stopIndex + 1]
+        print(tramGraph.edges())
+
+        extreme = tramGraph.extreme_positions()
+
+        print(extreme)
+
+
             
-            
-                tramGraph.add_edge(currentStop, nextStop)
-            
-
-        
-            g.view_shortest(tramGraph, 'Sandarna', 'Mariaplan', lambda u,v : tramGraph.get_weight(u, v))
-        
+        inputt = input()
+        if inputt == 't':
+            g.view_shortest(tramGraph, 'Sandarna', 'Kungssten', lambda u,v : tramGraph.transition_time(u,v))
+        elif inputt == 'd':
+            g.view_shortest(tramGraph, 'Sandarna', 'Munkebäckstorget', lambda u,v : tramGraph.geo_distance(u,v))
             
 class TramStop:
     def __init__(self, stop, position = None):
@@ -51,14 +54,16 @@ class TramStop:
     def get_coordinates(self):
         return self._coordinates
     
-    def set_coordinates(self, xCoord, yCoord)
+    def set_coordinates(self, xCoord, yCoord):
         self._coordinates = tuple(xCoord, yCoord)
 
     def get_lines_via_stop(self):
         return self._linesViaStop
 
-    def add_line_via_stop(self, line)
+    def add_line_via_stop(self, line):
         self._linesViaStop.append(line)
+
+
 
 class TramLine:
     def __init__(self, line, stops):
@@ -71,24 +76,66 @@ class TramLine:
     def get_stops_in_line(self):
         return self._stopDictionary
 
-class TramNetwork(WeightedGraph):
 
-    def __init__(self, stopDict. lineDict, timeDict):
+
+class TramNetwork(g.WeightedGraph):
+
+    def __init__(self, stopDict, lineDict, timeDict):
         super().__init__()
         self._stopDictionary = stopDict
         self._linesDictionary = lineDict
-        self._timeDict = timeDict
+        self._timesDictionary = timeDict
 
-
-    def 
-
-    def build_edges_for_tramNetwork(self):
-
-        for line in linesDictionary.keys():
-            for stopIndex in range(len(linesDictionary[line]) - 1):
-                currentStop = linesDictionary[line][stopIndex]
-                nextStop = linesDictionary[line][stopIndex + 1]
+        for line in self._linesDictionary.keys():
+            for stopIndex in range(len(self._linesDictionary[line]) - 1):
+                currentStop = self._linesDictionary[line][stopIndex]
+                nextStop = self._linesDictionary[line][stopIndex + 1]
                 self.add_edge(currentStop, nextStop)
+
+    def all_lines(self):
+        return self._linesDictionary.keys()
+    
+    def all_stops(self):
+        return self._stopDictionary.keys()
+    
+    def extreme_positions(self):
+        maxLat = 0
+        minLat = float('inf')
+        maxLon = 0
+        minLon = float('inf')
+        for stop in self._stopDictionary.keys():
+            stopLat = float(self._stopDictionary[stop]['lat'])
+            stopLon = float(self._stopDictionary[stop]['lon'])
+            maxLat = max(maxLat, stopLat)
+            minLat = min(minLat, stopLat)
+            maxLon = max(maxLon, stopLon)
+            minLon = min(minLon, stopLon)
+        
+        return [maxLat, minLat, maxLon, minLon]
+
+    def geo_distance(self, stop1, stop2):
+        distance = td.distance_between_stops(self._stopDictionary, stop1, stop2)
+        return distance
+    
+    def line_stops(self, line):
+        return self._linesDictionary[line]
+    
+    def stop_lines(self, stop):
+        linesViaStop = td.lines_via_stop(self._linesDictionary, stop)
+        return linesViaStop
+        
+    def stop_position(self, stop):
+        latPosition = self._stopDictionary[stop]['lat']
+        lonPosition = self._stopDictionary[stop]['lon']
+        return (latPosition, lonPosition)
+    
+    def transition_time(self, stop1, stop2):
+        line = td.lines_between_stops(self._linesDictionary, stop1, stop2)[0]
+        print(line)
+        time = td.time_between_stops(self._linesDictionary, self._timesDictionary, line, stop1, stop2)
+        return time
+
+        
         
 
     
